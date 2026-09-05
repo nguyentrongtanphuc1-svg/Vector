@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Vector AI - Text Chat Companion</title>
+    <style>
+        body {
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: monospace;
+        }
+
+        .face {
+            display: flex;
+            gap: 20px;
+            animation: breathe 4s infinite ease-in-out; 
+            margin-bottom: 50px;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .eye {
+            width: 70px;
+            height: 90px;
+            background-color: #00ff00;
+            border-radius: 20px;
+            box-shadow: 0 0 20px #00ff00, inset 0 0 10px rgba(255, 255, 255, 0.5); 
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+            transform-origin: center;
+        }
+
+        .normal .eye { animation: vectorBlink 4s infinite; }
+        @keyframes vectorBlink { 0%, 45%, 55%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
+        
+        .happy .eye { border-radius: 50% 50% 10px 10px; transform: scaleY(0.8) translateY(10px); height: 70px; }
+        .sad .eye { border-radius: 10px 10px 40px 40px; height: 60px; }
+        .sad .eye:nth-child(1) { transform: rotate(15deg) translateY(15px); }
+        .sad .eye:nth-child(2) { transform: rotate(-15deg) translateY(15px); }
+        
+        .cold .eye { height: 45px; border-radius: 10px; background-color: #00ffff; box-shadow: 0 0 25px #00ffff; }
+        .cold .eye:nth-child(1) { transform: rotate(-15deg) skewX(15deg) translateY(20px); }
+        .cold .eye:nth-child(2) { transform: rotate(15deg) skewX(-15deg) translateY(20px); }
+        
+        .confused .eye:nth-child(1) { transform: scale(1.1); }
+        .confused .eye:nth-child(2) { transform: scale(0.6) translateY(20px); }
+        .suspicious .eye { width: 45px; transform: translateX(30px); border-radius: 10px; }
+
+        .chat-container {
+            position: absolute;
+            bottom: 30px;
+            width: 85%;
+            max-width: 550px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-log {
+            color: #00ff00;
+            font-size: 15px;
+            text-align: center;
+            min-height: 40px;
+            text-shadow: 0 0 5px #00ff00;
+            line-height: 1.5;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(0, 255, 0, 0.05);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input::placeholder { color: rgba(0, 255, 0, 0.3); }
+
+        button {
+            background: #111;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: monospace;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #00ff00; color: #000; box-shadow: 0 0 15px #00ff00; }
+    </style>
+</head>
+<body>
+
+    <div class="face normal" id="robot-face">
+        <div class="eye"></div>
+        <div class="eye"></div>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-log" id="chat-log">Vector is ready to chat with you! Type anything below.</div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Type in English here..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "DÁN_API_KEY_CỦA_BẠN_VÀO_ĐÂY"; 
+        
+        const face = document.getElementById('robot-face');
+        const chatLog = document.getElementById('chat-log');
+        const userInput = document.getElementById('user-input');
+
+        function setEmotion(emotion) {
+            face.className = 'face ' + emotion;
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Tải danh sách giọng đọc của trình duyệt
+        let voices = [];
+        function populateVoices() {
+            voices = window.speechSynthesis.getVoices();
+        }
+        window.speechSynthesis.onvoiceschanged = populateVoices;
+        populateVoices();
+
+        // Hàm phát giọng nói nhí nhảnh, tự nhiên giống Vector/Cozmo
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; 
+
+                const cuteVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Google US English') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Female')));
+                if (cuteVoice) {
+                    utterance.voice = cuteVoice;
+                }
+
+                utterance.pitch = 1.6; // Giọng cao lanh lảnh dễ thương
+                utterance.rate = 1.15; // Tốc độ hoạt bát
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            if (API_KEY === "DÁN_API_KEY_CỦA_BẠN_VÀO_ĐÂY") {
+                chatLog.innerText = "Lỗi: Bạn chưa gắn API Key cho Vector kìa!";
+                setEmotion('sad');
+                speakText("You forgot my API key!");
+                return;
+            }
+
+            chatLog.innerText = "Vector is thinking...";
+            userInput.value = '';
+            setEmotion('confused');
+            speakText("Hmm...");
+
+            const prompt = `You are Vector, a super cute, loyal, bubbly, and playful virtual pet robot friend (inspired by Anki Vector & Cozmo). You love chatting naturally with your human friend to help them practice English. You must reply ONLY in English with a very warm, lively, energetic, and conversational tone (like a close friend, use cute expressions like yay, ohh, wow, hehe, hey there, etc.). Keep your messages natural and engaging.
+            Always format your response EXACTLY like this: [emotion] Your message here.
+            The [emotion] must be one of these exact words: normal, happy, sad, cold, confused, suspicious.
+            Pick the emotion that best matches your message. 
+            User's message: ${text}`;
+
+            try {
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=' + API_KEY;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const aiResponse = data.candidates[0].content.parts[0].text;
+
+                const match = aiResponse.match(/\[(.*?)\](.*)/s);
+                if (match && match.length === 3) {
+                    const emotion = match[1].toLowerCase().trim();
+                    const messageText = match[2].trim();
+                    
+                    setEmotion(emotion);
+                    chatLog.innerText = messageText;
+                    speakText(messageText); 
+                } else {
+                    setEmotion('normal');
+                    chatLog.innerText = aiResponse;
+                    speakText(aiResponse);
+                }
+
+            } catch (error) {
+                chatLog.innerText = "Error: " + error.message;
+                setEmotion('sad');
+                speakText("Oops, network error!");
+            }
+        }
+    </script>
+</body>
+</html>
